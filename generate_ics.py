@@ -172,8 +172,6 @@ def build_description(event: Event) -> str:
     parts = []
     if event.teacher:
         parts.append(f"教师: {event.teacher}")
-    if event.notes:
-        parts.append(event.notes)
     return "\n".join(parts)
 
 
@@ -399,6 +397,7 @@ def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, 
     add_prop(lines, "X-WR-CALNAME", escape_ical_text(calendar_name))
 
     for event in sorted(events, key=lambda item: (item.start, item.title)):
+        description = build_description(event)
         lines.append("BEGIN:VEVENT")
         add_prop(lines, "UID", uid_from(event.uid_source))
         add_prop(lines, "DTSTAMP", now)
@@ -407,6 +406,14 @@ def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, 
         add_prop(lines, "SUMMARY", escape_ical_text(event.title))
         if event.location:
             add_prop(lines, "LOCATION", escape_ical_text(event.location))
+        if description:
+            add_prop(lines, "DESCRIPTION", escape_ical_text(description))
+        if event.alarm_minutes is not None and event.alarm_minutes >= 0:
+            lines.append("BEGIN:VALARM")
+            add_prop(lines, "ACTION", "DISPLAY")
+            add_prop(lines, "DESCRIPTION", escape_ical_text(event.title))
+            add_prop(lines, "TRIGGER", f"-PT{event.alarm_minutes}M")
+            lines.append("END:VALARM")
         lines.append("END:VEVENT")
 
     lines.append("END:VCALENDAR")
