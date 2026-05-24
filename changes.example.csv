@@ -1,0 +1,5 @@
+action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes
+cancel,math101,2026-09-14,,,,,,老师通知停课,
+reschedule,eng201,2026-09-09,2026-09-10,19:00,20:35,,C305,,调课到周四晚,15
+extra,, ,2026-09-18,10:20,11:55,形势与政策,报告厅,王老师,补课,15
+

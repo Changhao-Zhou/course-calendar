@@ -1,0 +1,6 @@
+{
+  "calendar_name": "大学课表",
+  "timezone": "Asia/Shanghai",
+  "term_start_date": "2026-03-02",
+  "default_alarm_minutes": 15
+}
