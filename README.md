@@ -38,7 +38,7 @@ python .\import_timetable.py --input "E:\OneDrive\01_本科课程\一维课表.x
 python .\generate_ics.py
 ```
 
-节次对应时间写在 `period_times.json`。如果学校调整作息时间，改这个文件后重新运行 `generate_ics.py` 即可。
+节次对应时间写在 `period_times.json`，当前采用教务处〔2025〕83 号通知里的“春明湖校区作息时间安排”。如果学校调整作息时间，改这个文件后重新运行 `generate_ics.py` 即可。
 
 ## 调课、停课、补课
 
