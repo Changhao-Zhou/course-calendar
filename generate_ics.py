@@ -392,41 +392,21 @@ def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, 
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Codex//Course Calendar//CN",
+        "PRODID:-//Changhao-Zhou//Course Calendar//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
     ]
     add_prop(lines, "X-WR-CALNAME", escape_ical_text(calendar_name))
-    add_prop(lines, "X-WR-TIMEZONE", tzid)
-    lines.extend(
-        [
-            "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
-            "X-PUBLISHED-TTL:PT1H",
-        ]
-    )
 
     for event in sorted(events, key=lambda item: (item.start, item.title)):
-        description = build_description(event)
         lines.append("BEGIN:VEVENT")
         add_prop(lines, "UID", uid_from(event.uid_source))
         add_prop(lines, "DTSTAMP", now)
-        add_prop(lines, "LAST-MODIFIED", now)
         add_prop(lines, "DTSTART", format_dt_utc(event.start))
         add_prop(lines, "DTEND", format_dt_utc(event.end))
         add_prop(lines, "SUMMARY", escape_ical_text(event.title))
         if event.location:
             add_prop(lines, "LOCATION", escape_ical_text(event.location))
-        if description:
-            add_prop(lines, "DESCRIPTION", escape_ical_text(description))
-        add_prop(lines, "CATEGORIES", escape_ical_text("课程"))
-        lines.append("STATUS:CONFIRMED")
-        lines.append("TRANSP:OPAQUE")
-        if event.alarm_minutes is not None and event.alarm_minutes >= 0:
-            lines.append("BEGIN:VALARM")
-            add_prop(lines, "ACTION", "DISPLAY")
-            add_prop(lines, "DESCRIPTION", escape_ical_text(f"{event.title} 即将开始"))
-            add_prop(lines, "TRIGGER", f"-PT{event.alarm_minutes}M")
-            lines.append("END:VALARM")
         lines.append("END:VEVENT")
 
     lines.append("END:VCALENDAR")

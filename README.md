@@ -83,6 +83,14 @@ https://你的用户名.github.io/course-calendar/schedule.ics
 
 以后更新课表时，只需要修改 `courses.csv` 或 `changes.csv`，运行脚本，提交并推送。订阅地址保持不变。
 
+如果订阅成功但日历里暂时看不到课程，可以先订阅 `test.ics` 排查链路：
+
+```text
+https://你的用户名.github.io/course-calendar/test.ics
+```
+
+这个文件只有一条测试事件，能显示则说明客户端订阅正常。
+
 ## 隐私提醒
 
 GitHub Pages 免费公开发布时，知道地址的人可以访问你的课表。如果课程、教室、老师信息不适合公开，不建议使用公开仓库。
