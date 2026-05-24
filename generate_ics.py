@@ -332,6 +332,10 @@ def format_dt(value: datetime) -> str:
     return value.strftime("%Y%m%dT%H%M%S")
 
 
+def format_dt_utc(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
 def fold_ical_line(line: str) -> list[str]:
     remaining = line.encode("utf-8")
     lines = []
@@ -398,7 +402,6 @@ def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, 
         [
             "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
             "X-PUBLISHED-TTL:PT1H",
-            *build_timezone_lines(tzid, tz, term_start),
         ]
     )
 
@@ -408,8 +411,8 @@ def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, 
         add_prop(lines, "UID", uid_from(event.uid_source))
         add_prop(lines, "DTSTAMP", now)
         add_prop(lines, "LAST-MODIFIED", now)
-        add_prop(lines, f"DTSTART;TZID={tzid}", format_dt(event.start))
-        add_prop(lines, f"DTEND;TZID={tzid}", format_dt(event.end))
+        add_prop(lines, "DTSTART", format_dt_utc(event.start))
+        add_prop(lines, "DTEND", format_dt_utc(event.end))
         add_prop(lines, "SUMMARY", escape_ical_text(event.title))
         if event.location:
             add_prop(lines, "LOCATION", escape_ical_text(event.location))
@@ -457,4 +460,3 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
-

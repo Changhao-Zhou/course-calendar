@@ -65,6 +65,8 @@ python .\generate_ics.py
 
 脚本会生成或覆盖 `schedule.ics`。
 
+为提高苹果日历订阅兼容性，`schedule.ics` 中的事件时间会写成 UTC `Z` 时间；在中国大陆、香港等 UTC+8 时区查看时，会自动显示为课表里的本地上课时间。
+
 ## 发布到 GitHub Pages
 
 1. 在 GitHub 新建一个公开仓库，例如 `course-calendar`。
