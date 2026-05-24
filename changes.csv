@@ -1,2 +1,1 @@
-action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes
-
+semester_id,action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes

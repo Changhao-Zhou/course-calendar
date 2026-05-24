@@ -34,6 +34,7 @@ WEEKDAY_MAP = {
 }
 
 FIELDNAMES = [
+    "semester_id",
     "course_id",
     "title",
     "weekday",
@@ -142,7 +143,11 @@ def sheet_rows(path: Path, sheet_name: str | None) -> list[dict[str, str]]:
     return rows
 
 
-def convert_rows(rows: list[dict[str, str]], periods: dict[str, dict[str, str]]) -> list[dict[str, str]]:
+def convert_rows(
+    rows: list[dict[str, str]],
+    periods: dict[str, dict[str, str]],
+    semester_id: str,
+) -> list[dict[str, str]]:
     output_rows: list[dict[str, str]] = []
     for row in rows:
         source_row = int(row["_source_row"])
@@ -166,6 +171,7 @@ def convert_rows(rows: list[dict[str, str]], periods: dict[str, dict[str, str]])
         for start_week, end_week in parse_weeks(week_text):
             output_rows.append(
                 {
+                    "semester_id": semester_id,
                     "course_id": f"r{source_row:02d}",
                     "title": title,
                     "weekday": WEEKDAY_MAP[weekday_text],
@@ -183,11 +189,20 @@ def convert_rows(rows: list[dict[str, str]], periods: dict[str, dict[str, str]])
     return output_rows
 
 
-def write_courses(path: Path, rows: list[dict[str, str]]) -> None:
+def read_existing_courses(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file)
+        return [{field: clean(row.get(field)) for field in FIELDNAMES} for row in reader]
+
+
+def write_courses(path: Path, rows: list[dict[str, str]], append: bool = False) -> None:
+    output_rows = [*read_existing_courses(path), *rows] if append else rows
     with path.open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(output_rows)
 
 
 def main() -> int:
@@ -195,12 +210,15 @@ def main() -> int:
     parser.add_argument("--input", required=True, type=Path, help="Path to the timetable .xlsx file.")
     parser.add_argument("--sheet", default=None, help="Worksheet name. Defaults to the first sheet.")
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH, type=Path, help="Output courses.csv path.")
+    parser.add_argument("--semester-id", default="default", help="Semester id from semesters.csv.")
+    parser.add_argument("--append", action="store_true", help="Append imported rows to the existing output file.")
     args = parser.parse_args()
 
     periods = load_period_times(PERIOD_TIMES_PATH)
-    rows = convert_rows(sheet_rows(args.input, args.sheet), periods)
-    write_courses(args.output, rows)
-    print(f"Imported {len(rows)} course rows into {args.output}.")
+    rows = convert_rows(sheet_rows(args.input, args.sheet), periods, args.semester_id)
+    write_courses(args.output, rows, append=args.append)
+    mode = "appended to" if args.append else "imported into"
+    print(f"Imported {len(rows)} course rows {mode} {args.output}.")
     return 0
 
 
@@ -210,4 +228,3 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
-

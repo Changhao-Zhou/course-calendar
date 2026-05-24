@@ -1,4 +1,3 @@
-course_id,title,weekday,start_time,end_time,start_week,end_week,week_type,location,teacher,notes,alarm_minutes
-math101,高等数学,1,08:30,10:05,1,16,all,A101,张老师,,15
-eng201,大学英语,3,14:00,15:35,1,16,odd,B203,李老师,单周上课,15
-
+semester_id,course_id,title,weekday,start_time,end_time,start_week,end_week,week_type,location,teacher,notes,alarm_minutes
+2026-spring,math101,高等数学,1,08:30,10:05,1,16,all,A101,张老师,,15
+2026-spring,eng201,大学英语,3,14:00,15:35,1,16,odd,B203,李老师,单周上课,15

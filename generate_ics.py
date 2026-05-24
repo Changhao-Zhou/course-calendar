@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "calendar_config.json"
+SEMESTERS_PATH = ROOT / "semesters.csv"
 COURSES_PATH = ROOT / "courses.csv"
 CHANGES_PATH = ROOT / "changes.csv"
 OUTPUT_PATH = ROOT / "schedule.ics"
@@ -101,6 +102,31 @@ def read_rows(path: Path) -> list[dict[str, str]]:
         return rows
 
 
+def load_semesters(path: Path, default_term_start: date, default_tzid: str) -> dict[str, dict[str, str]]:
+    semesters: dict[str, dict[str, str]] = {
+        "default": {
+            "name": "Default",
+            "term_start_date": default_term_start.isoformat(),
+            "timezone": default_tzid,
+            "notes": "",
+        }
+    }
+    for line_number, row in enumerate(read_rows(path), start=2):
+        semester_id = clean(row.get("semester_id"))
+        if not semester_id:
+            raise ValueError(f"semesters.csv line {line_number}: semester_id is required")
+        term_start_date = clean(row.get("term_start_date"))
+        if not term_start_date:
+            raise ValueError(f"semesters.csv line {line_number}: term_start_date is required")
+        semesters[semester_id] = {
+            "name": clean(row.get("name")),
+            "term_start_date": term_start_date,
+            "timezone": clean(row.get("timezone")) or default_tzid,
+            "notes": clean(row.get("notes")),
+        }
+    return semesters
+
+
 def parse_date(value: str, field_name: str) -> date:
     value = clean(value)
     if not value:
@@ -162,6 +188,27 @@ def event_key(course_id: str, original_date: date) -> str:
     return f"{course_id}:{original_date.isoformat()}"
 
 
+def find_event_key(
+    events: dict[str, Event],
+    course_id: str,
+    original_date: date,
+    semester_id: str = "",
+) -> str:
+    if semester_id:
+        key = event_key(f"{semester_id}:{course_id}", original_date)
+        return key if key in events else ""
+
+    suffix = f":{course_id}:{original_date.isoformat()}"
+    matches = [key for key in events if key.endswith(suffix)]
+    if len(matches) > 1:
+        raise ValueError(f"multiple events match {course_id} on {original_date}; set semester_id in changes.csv")
+    if matches:
+        return matches[0]
+
+    legacy_key = event_key(course_id, original_date)
+    return legacy_key if legacy_key in events else ""
+
+
 def uid_from(source: str) -> str:
     digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:16]
     safe = re.sub(r"[^A-Za-z0-9_.-]+", "-", source).strip("-")[:40] or "event"
@@ -175,9 +222,25 @@ def build_description(event: Event) -> str:
     return "\n".join(parts)
 
 
-def expand_courses(rows: list[dict[str, str]], term_start: date, tz: ZoneInfo, default_alarm: int | None) -> dict[str, Event]:
+def expand_courses(
+    rows: list[dict[str, str]],
+    semesters: dict[str, dict[str, str]],
+    default_tzid: str,
+    default_alarm: int | None,
+) -> dict[str, Event]:
     events: dict[str, Event] = {}
+    tz_cache: dict[str, ZoneInfo] = {}
     for line_number, row in enumerate(rows, start=2):
+        semester_id = clean(row.get("semester_id")) or "default"
+        if semester_id not in semesters:
+            raise ValueError(f"courses.csv line {line_number}: unknown semester_id {semester_id!r}")
+        semester = semesters[semester_id]
+        term_start = parse_date(semester["term_start_date"], f"term_start_date for {semester_id}")
+        tzid = semester.get("timezone") or default_tzid
+        if tzid not in tz_cache:
+            tz_cache[tzid] = ZoneInfo(tzid)
+        tz = tz_cache[tzid]
+
         course_id = clean(row.get("course_id"))
         if not course_id:
             raise ValueError(f"courses.csv line {line_number}: course_id is required")
@@ -206,7 +269,7 @@ def expand_courses(rows: list[dict[str, str]], term_start: date, tz: ZoneInfo, d
             if end <= start:
                 end += timedelta(days=1)
 
-            key = event_key(course_id, day)
+            key = event_key(f"{semester_id}:{course_id}", day)
             if key in events:
                 raise ValueError(f"duplicate event for {key}")
 
@@ -237,13 +300,14 @@ def apply_changes(
             continue
 
         course_id = clean(row.get("course_id"))
+        semester_id = clean(row.get("semester_id"))
         original_date_text = clean(row.get("original_date"))
         target_key = ""
         original_event: Event | None = None
         if course_id and original_date_text:
             original_date = parse_date(original_date_text, "original_date")
-            target_key = event_key(course_id, original_date)
-            original_event = updated.get(target_key)
+            target_key = find_event_key(updated, course_id, original_date, semester_id)
+            original_event = updated.get(target_key) if target_key else None
 
         if action in CANCEL_ACTIONS:
             if not target_key:
@@ -385,7 +449,7 @@ def build_timezone_lines(tzid: str, tz: ZoneInfo, sample_date: date) -> list[str
     ]
 
 
-def build_ics(events: list[Event], calendar_name: str, tzid: str, tz: ZoneInfo, term_start: date) -> str:
+def build_ics(events: list[Event], calendar_name: str) -> str:
     now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
@@ -428,12 +492,12 @@ def main() -> int:
     default_alarm = config.get("default_alarm_minutes", 15)
     default_alarm = None if default_alarm is None else int(default_alarm)
 
-    tz = ZoneInfo(tzid)
-    events = expand_courses(read_rows(COURSES_PATH), term_start, tz, default_alarm)
-    events = apply_changes(events, read_rows(CHANGES_PATH), tz, default_alarm)
+    semesters = load_semesters(SEMESTERS_PATH, term_start, tzid)
+    events = expand_courses(read_rows(COURSES_PATH), semesters, tzid, default_alarm)
+    events = apply_changes(events, read_rows(CHANGES_PATH), ZoneInfo(tzid), default_alarm)
 
     OUTPUT_PATH.write_text(
-        build_ics(list(events.values()), calendar_name, tzid, tz, term_start),
+        build_ics(list(events.values()), calendar_name),
         encoding="utf-8",
         newline="",
     )

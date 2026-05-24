@@ -9,6 +9,7 @@ https://你的用户名.github.io/仓库名/schedule.ics
 ## 文件说明
 
 - `calendar_config.json`：日历名称、时区、学期第一周周一日期、默认提醒时间。
+- `semesters.csv`：每个学期的学期 ID、名称、第一周周一日期。
 - `courses.csv`：基础课表。
 - `changes.csv`：停课、调课、补课、临时修改。
 - `generate_ics.py`：生成 `schedule.ics` 的脚本。
@@ -19,9 +20,10 @@ https://你的用户名.github.io/仓库名/schedule.ics
 编辑 `courses.csv`。字段如下：
 
 ```text
-course_id,title,weekday,start_time,end_time,start_week,end_week,week_type,location,teacher,notes,alarm_minutes
+semester_id,course_id,title,weekday,start_time,end_time,start_week,end_week,week_type,location,teacher,notes,alarm_minutes
 ```
 
+- `semester_id`：课程所属学期，必须能在 `semesters.csv` 里找到，例如 `2025-fall`、`2026-spring`。
 - `course_id`：课程唯一 ID，例如 `math101`。后续调课要用它定位原课程。
 - `weekday`：1-7 或 `周一` 到 `周日`。
 - `week_type`：`all`、`odd`、`even`，分别代表每周、单周、双周。
@@ -38,14 +40,32 @@ python .\import_timetable.py --input "E:\OneDrive\01_本科课程\一维课表.x
 python .\generate_ics.py
 ```
 
+导入到指定学期并追加到现有四年课表：
+
+```powershell
+python .\import_timetable.py --input "E:\OneDrive\01_本科课程\一维课表.xlsx" --sheet "一维课表" --semester-id 2026-spring --append
+python .\generate_ics.py
+```
+
 节次对应时间写在 `period_times.json`，当前采用教务处〔2025〕83 号通知里的“春明湖校区作息时间安排”。如果学校调整作息时间，改这个文件后重新运行 `generate_ics.py` 即可。
+
+## 多学期归档
+
+这个仓库可以长期保存大学四年八个学期。每新增一个学期：
+
+1. 在 `semesters.csv` 增加一行，写清楚该学期的 `semester_id` 和第一周周一日期。
+2. 把该学期课程追加到 `courses.csv`，每行填对应的 `semester_id`。
+3. 运行 `python .\generate_ics.py`。
+4. 提交并推送到 GitHub。
+
+订阅 URL 不需要变化，旧课和新课会共存在同一个 `schedule.ics` 里。
 
 ## 调课、停课、补课
 
 编辑 `changes.csv`。字段如下：
 
 ```text
-action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes
+semester_id,action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes
 ```
 
 支持的 `action`：
