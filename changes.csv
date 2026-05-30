@@ -1,1 +1,3 @@
 semester_id,action,course_id,original_date,new_date,new_start_time,new_end_time,new_title,new_location,new_teacher,notes,alarm_minutes
+2026-spring,update,r04,2026-06-08,2026-06-08,14:55,16:20,,春-三教(A区)232,,,
+2026-spring,cancel,r05,2026-06-08,,,,,,,,
